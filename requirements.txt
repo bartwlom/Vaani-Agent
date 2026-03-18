@@ -1,0 +1,2 @@
+videosdk
+python-dotenv

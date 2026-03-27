@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 load_dotenv()
 
-# Define the agent's behavior and personality
+
 class MyVoiceAgent(Agent):
     def __init__(self):
         super().__init__(
@@ -63,3 +63,4 @@ if __name__ == "__main__":
     except Exception as e:
         traceback.print_exc()
         
+

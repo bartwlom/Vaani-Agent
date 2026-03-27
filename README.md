@@ -52,5 +52,4 @@ Once the agent is running:
 1. **Inbound Calls**: Go to your VideoSDK Dashboard -> **Telephony / SIP**. You can link a phone number (provided by VideoSDK or Twilio) directly to the Agent ID: `MyTelephonyAgent`. When anyone dials that phone number, the agent will instantly pick up and answer!
 2. **Outbound Calls**: You can use the VideoSDK API to trigger an outbound call to any real phone number, assigning `MyTelephonyAgent` as the AI participant in the room.
 
----
-**Troubleshooting Check:** If you see an `externally-managed-environment` error, it means you forgot to run step 2 (`source venv/bin/activate`) before running pip!
+

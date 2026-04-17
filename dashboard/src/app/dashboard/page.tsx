@@ -18,11 +18,17 @@ export default function Dashboard() {
   const [agentPrompt, setAgentPrompt] = useState("");
   const [isCalling, setIsCalling] = useState(false);
   const [status, setStatus] = useState<"OFFLINE" | "DIALING" | "RINGING" | "CONNECTED" | "DISCONNECTED">("OFFLINE");
-  const [logs, setLogs] = useState<LogEntry[]>([
-    { timestamp: new Date().toLocaleTimeString(), source: "SYSTEM", message: "Auth token verified. Telephony node active." },
-  ]);
+  const [mounted, setMounted] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+    setLogs([
+      { timestamp: new Date().toLocaleTimeString(), source: "SYSTEM", message: "Auth token verified. Telephony node active." },
+    ]);
+  }, []);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -50,21 +56,24 @@ export default function Dashboard() {
         body: JSON.stringify({ phoneNumber, agentPrompt }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         setStatus("RINGING");
+        addLog("CALL", `Call initiated! SID: ${data.data.callSid}`);
         addLog("CALL", `Ringing ${phoneNumber}...`);
         
-        // Mock connection simulation
+        // Update status after a delay
         setTimeout(() => {
           setStatus("CONNECTED");
           addLog("CALL", "Connection established. AI listening.");
           setIsCalling(false);
         }, 4000);
       } else {
-        throw new Error("API Failure");
+        throw new Error(data.error || data.details || "API Failure");
       }
-    } catch (e) {
-      addLog("SYSTEM", "CRITICAL ERROR: Failed to initiate uplink.");
+    } catch (e: any) {
+      addLog("SYSTEM", `CRITICAL ERROR: ${e.message || "Failed to initiate uplink."}`);
       setStatus("DISCONNECTED");
       setIsCalling(false);
     }
@@ -82,6 +91,11 @@ export default function Dashboard() {
         router.push("/");
     }, 1000);
   };
+
+  // Prevent hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="flex-1 flex flex-col h-full mt-4 max-w-7xl mx-auto w-full relative z-20">

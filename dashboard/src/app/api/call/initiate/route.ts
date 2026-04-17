@@ -1,48 +1,73 @@
 import { NextResponse } from "next/server";
+import twilio from "twilio";
 
 export async function POST(request: Request) {
   try {
     const { phoneNumber, agentPrompt } = await request.json();
 
+    console.log("Initiating call to:", phoneNumber);
+
     if (!phoneNumber) {
       return NextResponse.json({ error: "Phone number required" }, { status: 400 });
     }
 
-    // =========================================================================
-    // ⚠️ TODO: INTEGRATE VIDEOSDK & TWILIO NODE.JS SCRIPT HERE
-    // =========================================================================
-    // 
-    // 1. Initialize Twilio client to initiate the call.
-    //    const twilioClient = require('twilio')(accountSid, authToken);
-    //
-    // 2. Initialize VideoSDK to create a meeting/agent context.
-    //    const meeting = await createVideoSDKMeeting();
-    //
-    // 3. Command Twilio to dial the `phoneNumber` and pass Twilio's webhook  
-    //    URL (pointing to `/api/call/webhook` below) so VideoSDK can ingest the audio.
-    //
-    // 4. Pass the `agentPrompt` into the VideoSDK Agent Configuration so it 
-    //    acts according to the operator's instructions.
-    //
-    // Example Node.js Pseudocode:
-    // await twilioClient.calls.create({
-    //    url: 'https://your-domain.com/api/call/webhook',
-    //    to: phoneNumber,
-    //    from: process.env.TWILIO_PHONE_NUMBER
-    // });
-    // =========================================================================
+    // Initialize Twilio client
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-    // Simulate network delay for the mock UI
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    console.log("Twilio config check:", {
+      accountSid: accountSid ? "Set" : "Missing",
+      authToken: authToken ? "Set" : "Missing",
+      twilioPhoneNumber: twilioPhoneNumber ? "Set" : "Missing"
+    });
+
+    if (!accountSid || !authToken || !twilioPhoneNumber) {
+      return NextResponse.json(
+        { error: "Twilio credentials not configured" },
+        { status: 500 }
+      );
+    }
+
+    const client = twilio(accountSid, authToken);
+
+    // Use TwiML Bin URL for demo, or ngrok URL for production
+    // For local development, use Twilio's demo TwiML
+    const webhookUrl = process.env.TWILIO_WEBHOOK_URL || 
+      'http://demo.twilio.com/docs/voice.xml';
+
+    console.log("Using webhook URL:", webhookUrl);
+
+    // Make the actual phone call via Twilio
+    const call = await client.calls.create({
+      url: webhookUrl,
+      to: phoneNumber,
+      from: twilioPhoneNumber,
+    });
+
+    console.log("Call initiated successfully:", call.sid);
 
     return NextResponse.json({ 
-        success: true, 
-        message: "Call initiated successfully via API mock",
-        data: { phoneNumber, promptReceived: agentPrompt !== "" }
+      success: true, 
+      message: "Call initiated successfully",
+      data: { 
+        phoneNumber,
+        callSid: call.sid,
+        callStatus: call.status,
+        promptReceived: agentPrompt !== ""
+      }
     });
   } catch (error) {
+    console.error("Twilio call error:", error);
+    console.error("Error details:", (error as Error).message);
+    
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      { 
+        error: "Failed to initiate call", 
+        details: (error as Error).message,
+        code: (error as any).code,
+        moreInfo: (error as any).moreInfo
+      },
       { status: 500 }
     );
   }

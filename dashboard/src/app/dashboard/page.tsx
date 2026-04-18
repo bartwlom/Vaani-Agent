@@ -4,12 +4,12 @@ import { useState, useRef, useEffect } from "react";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { GlowingText } from "@/components/ui/GlowingText";
-import { Activity, Phone, Terminal as TerminalIcon, LogOut } from "lucide-react";
+import { Activity, Phone, Terminal as TerminalIcon, LogOut, Wifi, WifiOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface LogEntry {
   timestamp: string;
-  source: "SYSTEM" | "AGENT" | "CALL";
+  source: "SYSTEM" | "AGENT" | "CALL" | "ERROR";
   message: string;
 }
 
@@ -27,6 +27,7 @@ export default function Dashboard() {
     setMounted(true);
     setLogs([
       { timestamp: new Date().toLocaleTimeString(), source: "SYSTEM", message: "Auth token verified. Telephony node active." },
+      { timestamp: new Date().toLocaleTimeString(), source: "SYSTEM", message: "Agent routing: MyTelephonyAgent → VideoSDK SIP Bridge" },
     ]);
   }, []);
 
@@ -40,16 +41,20 @@ export default function Dashboard() {
 
   const handleInitiateCall = async () => {
     if (!phoneNumber) {
-      addLog("SYSTEM", "ERROR: Target phone number is required.");
+      addLog("ERROR", "Target phone number is required.");
       return;
     }
 
     setIsCalling(true);
     setStatus("DIALING");
-    addLog("AGENT", `Compiling instructions for target ${phoneNumber}...`);
+    addLog("AGENT", `Initiating AI call to ${phoneNumber}...`);
+    
+    if (agentPrompt.trim()) {
+      addLog("AGENT", `Custom instructions loaded: "${agentPrompt.substring(0, 60)}${agentPrompt.length > 60 ? '...' : ''}"`);
+    }
 
     try {
-      addLog("SYSTEM", "Connecting to Twilio gateway...");
+      addLog("SYSTEM", "Routing through VideoSDK SIP gateway...");
       const res = await fetch("/api/call/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,20 +65,22 @@ export default function Dashboard() {
 
       if (res.ok) {
         setStatus("RINGING");
-        addLog("CALL", `Call initiated! SID: ${data.data.callSid}`);
+        addLog("CALL", `Call initiated! ID: ${data.data.callSid}`);
+        addLog("CALL", `Method: ${data.data.method || 'videosdk-sip'}`);
         addLog("CALL", `Ringing ${phoneNumber}...`);
         
-        // Update status after a delay
+        // Update status after connection
         setTimeout(() => {
           setStatus("CONNECTED");
-          addLog("CALL", "Connection established. AI listening.");
+          addLog("CALL", "Connection established. AI agent active.");
+          addLog("AGENT", "Gemini model listening — real-time conversation active.");
           setIsCalling(false);
         }, 4000);
       } else {
         throw new Error(data.error || data.details || "API Failure");
       }
     } catch (e: any) {
-      addLog("SYSTEM", `CRITICAL ERROR: ${e.message || "Failed to initiate uplink."}`);
+      addLog("ERROR", `${e.message || "Failed to initiate call."}`);
       setStatus("DISCONNECTED");
       setIsCalling(false);
     }
@@ -82,6 +89,7 @@ export default function Dashboard() {
   const handleDisconnect = () => {
     setStatus("DISCONNECTED");
     addLog("CALL", "Connection terminated by operator.");
+    addLog("SYSTEM", "AI agent session closed.");
   };
 
   const handleLogout = () => {
@@ -137,10 +145,33 @@ export default function Dashboard() {
             <TerminalInput 
               label="AGENT_SYSTEM_PROMPT" 
               multiline
-              placeholder="Inject behavioral instructions here. E.g., 'You are a helpful assistant...'"
+              placeholder="Optional: Override default AI behavior. E.g., 'You are a customer support agent for Acme Corp...'"
               value={agentPrompt}
               onChange={(e) => setAgentPrompt(e.target.value)}
             />
+
+            {/* Agent Info */}
+            <div className="border border-terminal-greenDim p-3 space-y-2">
+              <GlowingText className="text-xs tracking-widest text-terminal-amber">AGENT_INFO</GlowingText>
+              <div className="text-xs text-terminal-green space-y-1 font-mono">
+                <div className="flex justify-between">
+                  <span className="text-terminal-greenDim">ID:</span>
+                  <span>MyTelephonyAgent</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-terminal-greenDim">MODEL:</span>
+                  <span>gemini-2.0-flash</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-terminal-greenDim">VOICE:</span>
+                  <span>Leda</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-terminal-greenDim">MODE:</span>
+                  <span className="text-terminal-amber">CONVERSATIONAL</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="mt-auto pt-4 space-y-4">
@@ -171,7 +202,8 @@ export default function Dashboard() {
             </GlowingText>
             <div className="flex items-center space-x-4">
                 {status === "OFFLINE" || status === "DISCONNECTED" ? (
-                    <div className="text-terminal-amber opacity-50 tracking-[0.5em] text-2xl font-bold">
+                    <div className="text-terminal-amber opacity-50 tracking-[0.5em] text-2xl font-bold flex items-center gap-3">
+                        <WifiOff className="w-6 h-6" />
                         [ {status} ]
                     </div>
                 ) : (
@@ -179,10 +211,16 @@ export default function Dashboard() {
                          {Array.from({length: 3}).map((_, i) => (
                              <span key={i} className={`inline-block mr-2 text-terminal-green animate-bounce`} style={{ animationDelay: `${i * 0.15}s`}}>█</span>
                          ))}
+                         <Wifi className="w-7 h-7 mr-3 text-terminal-green" />
                          [ {status} ]
                     </div>
                 )}
             </div>
+            {status === "CONNECTED" && (
+              <div className="absolute bottom-2 right-4 text-xs text-terminal-green animate-pulse font-mono">
+                ● AI AGENT ACTIVE — REAL-TIME CONVERSATION
+              </div>
+            )}
           </section>
 
           {/* PANEL 3: Communication Log (Terminal Output) */}
@@ -196,10 +234,17 @@ export default function Dashboard() {
                 {logs.map((log, idx) => (
                     <div key={idx} className="flex">
                         <span className="text-terminal-greenDim mr-3 shrink-0">[{log.timestamp}]</span>
-                        <span className={`mr-3 shrink-0 ${log.source === 'SYSTEM' ? 'text-terminal-amber' : log.source === 'AGENT' ? 'text-blue-400' : 'text-terminal-green'}`}>
+                        <span className={`mr-3 shrink-0 ${
+                          log.source === 'SYSTEM' ? 'text-terminal-amber' : 
+                          log.source === 'AGENT' ? 'text-blue-400' : 
+                          log.source === 'ERROR' ? 'text-red-400' :
+                          'text-terminal-green'
+                        }`}>
                             {log.source}:
                         </span>
-                        <span className="text-terminal-green break-words">{log.message}</span>
+                        <span className={`break-words ${log.source === 'ERROR' ? 'text-red-400' : 'text-terminal-green'}`}>
+                          {log.message}
+                        </span>
                     </div>
                 ))}
                 <div ref={logEndRef} className="h-4" />

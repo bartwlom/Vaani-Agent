@@ -108,15 +108,30 @@ Agent will listen on localhost:8081
 ### Call goes to voicemail or "number not available"
 - Make sure `python main.py` is running
 - Check that the Twilio number is linked to the SIP Trunk (not a TwiML app)
+- Verify your machine has **internet connectivity** — the agent must reach `api.videosdk.live`
 
-### Agent connects but doesn't speak
-- Check `GEMINI_API_KEY` is valid and has quota
-- Check the agent logs for errors
+### Agent connects but caller hangs up instantly
+- Logs show: *"SIP user detected, waiting for audio stream"* → *"Participant left"*
+- This means the **SIP/telephony bridge** is timing out, not the agent code
+- Check that the Inbound Gateway, Routing Rule, and SIP Trunk origination URI all match
+- Verify the `VIDEOSDK_AUTH_TOKEN` JWT was generated from the **same API key** used to create the Inbound Gateway
 
-### "Press a key" / music playing
-- Your Twilio number is still pointing to the old TwiML app or demo URL
-- Go to Twilio → Phone Numbers → change Voice Configuration to SIP Trunk
+### "Press a key" / music / documentation page playing
+- Your Twilio number is still pointing to the old TwiML app or demo webhook URL
+- Go to Twilio Console → **Phone Numbers** → `+13613210673` → **Voice Configuration**
+- Change **"Configure With"** to **SIP Trunk** and select your VideoSDK trunk
+- If using the dashboard webhook fallback, ensure `VIDEOSDK_SIP_URI` is set in `dashboard/.env.local`
+
+### Agent fails to start (DNS/network error)
+- Error: *"Cannot connect to host api.videosdk.live"*
+- Your machine has no internet connectivity — check WiFi/ethernet
+- The agent **requires** online access to register with VideoSDK
 
 ### Agent ID mismatch
 - The `agent_id` in `main.py` must exactly match the ID in VideoSDK Routing Rules
 - Current value: `MyTelephonyAgent`
+
+### API Key / Token mismatch
+- The `VIDEOSDK_AUTH_TOKEN` JWT must be signed with the **same API key** used in the VideoSDK dashboard
+- Decode the JWT at [jwt.io](https://jwt.io) to check the `apikey` field matches `VIDEOSDK_API_KEY`
+- If they differ, regenerate the token using your correct API key and secret

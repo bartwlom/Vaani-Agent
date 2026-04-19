@@ -95,7 +95,7 @@ async def start_session(context: JobContext):
 
     logger.info("Initializing Gemini Realtime model for telephony...")
     model = GeminiRealtime(
-        model="gemini-2.0-flash-live-001",
+        model="gemini-2.5-flash-native-audio-preview-12-2025",
         api_key=gemini_key,
         config=GeminiLiveConfig(
             voice="Leda",

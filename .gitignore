@@ -63,3 +63,9 @@ coverage/
 .temp/
 tmp/
 temp/
+
+# Scratch and test files
+scratch*.js
+check_twilio_calls.py
+test_*.py
+dashboard/test_agent.js

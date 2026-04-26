@@ -77,10 +77,10 @@ export default function Dashboard() {
           setIsCalling(false);
         }, 4000);
       } else {
-        throw new Error(data.error || data.details || "API Failure");
+        throw new Error(data.details || data.error || "API Failure");
       }
     } catch (e: any) {
-      addLog("ERROR", `${e.message || "Failed to initiate call."}`);
+      addLog("ERROR", e.message || "Failed to initiate call.");
       setStatus("DISCONNECTED");
       setIsCalling(false);
     }

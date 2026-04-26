@@ -67,8 +67,7 @@ class MyVoiceAgent(Agent):
         logger.info(f"Agent {AGENT_ID} joined the session — greeting the caller.")
         try:
             await self.session.say(
-                "Hey there! I'm Vaani, your AI assistant. "
-                "You can ask me anything — I'm here to help. What's on your mind?"
+                "Hi, this is voice agent build by my boss. How can I help you today?"
             )
         except Exception:
             logger.error("Failed to speak initial greeting", exc_info=True)
@@ -95,7 +94,7 @@ async def start_session(context: JobContext):
 
     logger.info("Initializing Gemini Realtime model for telephony...")
     model = GeminiRealtime(
-        model="gemini-2.5-flash-native-audio-preview-12-2025",
+        model="gemini-2.0-flash",
         api_key=gemini_key,
         config=GeminiLiveConfig(
             voice="Leda",
@@ -166,7 +165,7 @@ if __name__ == "__main__":
         )
 
         logger.info(f"Starting WorkerJob for Agent: {AGENT_ID}")
-        logger.info(f"Agent will listen on localhost:8081")
+        logger.info("Agent will listen on localhost:8081")
         logger.info(f"Make sure VideoSDK Routing Rule points to agent_id='{AGENT_ID}'")
         job = WorkerJob(entrypoint=start_session, jobctx=make_context, options=options)
         job.start()

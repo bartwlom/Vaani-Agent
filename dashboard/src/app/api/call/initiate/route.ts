@@ -25,59 +25,10 @@ export async function POST(request: Request) {
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-    // Check which method to use: VideoSDK SIP API (preferred) or Twilio fallback
-    if (videosdkToken) {
-      // ─── METHOD 1: VideoSDK Outbound SIP Call (Recommended) ───
-      // This routes through VideoSDK → SIP Trunk → Phone, and the AI agent
-      // is automatically connected via the routing rule.
-      console.log("Using VideoSDK SIP outbound call...");
-
-      const res = await fetch("https://api.videosdk.live/v2/sip/outbound-call", {
-        method: "POST",
-        headers: {
-          "Authorization": videosdkToken,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to: phoneNumber,
-          from: twilioPhoneNumber,
-          agentId: "MyTelephonyAgent",
-          // Pass custom instructions if provided from dashboard
-          ...(agentPrompt && { metadata: { systemPrompt: agentPrompt } }),
-        }),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.text();
-        console.error("VideoSDK SIP call error:", errorData);
-        
-        // Fall back to Twilio direct if VideoSDK SIP is not configured
-        if (res.status === 404 || res.status === 400) {
-          console.log("VideoSDK SIP endpoint not available, trying Twilio direct...");
-          return await makeTwilioCall(phoneNumber, agentPrompt, twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
-        }
-        
-        throw new Error(`VideoSDK API error: ${res.status} - ${errorData}`);
-      }
-
-      const data = await res.json();
-      console.log("VideoSDK outbound call initiated:", data);
-
-      return NextResponse.json({
-        success: true,
-        message: "Call initiated via VideoSDK SIP",
-        data: {
-          phoneNumber,
-          callSid: data.callId || data.id || "videosdk-call",
-          callStatus: "initiated",
-          method: "videosdk-sip",
-          promptReceived: agentPrompt !== "",
-        },
-      });
-    }
-
-    // ─── METHOD 2: Twilio Direct (Fallback) ───
+    // ─── METHOD: Twilio Direct ───
     // Uses Twilio to call the number with a webhook that connects to VideoSDK
+    // This is the most reliable method for outbound calls because VideoSDK's direct 
+    // Outbound Gateway SIP API requires additional dashboard configuration (gatewayId).
     return await makeTwilioCall(phoneNumber, agentPrompt, twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
 
   } catch (error) {
@@ -114,28 +65,27 @@ async function makeTwilioCall(
   const twilio = (await import("twilio")).default;
   const client = twilio(accountSid, authToken);
 
-  // Use our own webhook that returns TwiML to connect to VideoSDK
-  // For this to work, you need the webhook publicly accessible (ngrok, etc.)
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL;
-  const webhookUrl = baseUrl
-    ? `${baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`}/api/call/webhook`
-    : undefined;
+  const videosdk_sip_uri = process.env.VIDEOSDK_SIP_URI;
 
-  if (!webhookUrl) {
+  if (!videosdk_sip_uri) {
     return NextResponse.json(
-      {
-        error: "No public webhook URL configured. For outbound calls, either:\n" +
-          "1. Set up VideoSDK Outbound Gateway + SIP Trunk (recommended), or\n" +
-          "2. Set NEXT_PUBLIC_APP_URL to your public URL (ngrok for dev)",
-      },
+      { error: "VIDEOSDK_SIP_URI is not configured in dashboard/.env.local. Please set it to your Inbound Gateway URI to connect calls to the agent." },
       { status: 500 }
     );
   }
 
-  console.log("Using Twilio direct call with webhook:", webhookUrl);
+  console.log("Using Twilio direct call with inline TwiML connecting to:", videosdk_sip_uri);
+
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Say voice="Polly.Amy">Please hold while I connect you to the AI assistant.</Say>
+    <Dial>
+        <Sip>${videosdk_sip_uri}</Sip>
+    </Dial>
+</Response>`;
 
   const call = await client.calls.create({
-    url: webhookUrl,
+    twiml: twiml,
     to: phoneNumber,
     from: twilioPhoneNumber,
   });
@@ -149,7 +99,7 @@ async function makeTwilioCall(
       phoneNumber,
       callSid: call.sid,
       callStatus: call.status,
-      method: "twilio-direct",
+      method: "twilio-direct-twiml",
       promptReceived: agentPrompt !== "",
     },
   });

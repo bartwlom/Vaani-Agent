@@ -48,7 +48,7 @@ export default function Dashboard() {
     setIsCalling(true);
     setStatus("DIALING");
     addLog("AGENT", `Initiating AI call to ${phoneNumber}...`);
-    
+
     if (agentPrompt.trim()) {
       addLog("AGENT", `Custom instructions loaded: "${agentPrompt.substring(0, 60)}${agentPrompt.length > 60 ? '...' : ''}"`);
     }
@@ -68,7 +68,7 @@ export default function Dashboard() {
         addLog("CALL", `Call initiated! ID: ${data.data.callSid}`);
         addLog("CALL", `Method: ${data.data.method || 'videosdk-sip'}`);
         addLog("CALL", `Ringing ${phoneNumber}...`);
-        
+
         // Update status after connection
         setTimeout(() => {
           setStatus("CONNECTED");
@@ -96,7 +96,7 @@ export default function Dashboard() {
     addLog("SYSTEM", "Logging out operator. Clearing secure tokens...");
     document.cookie = "operator_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     setTimeout(() => {
-        router.push("/");
+      router.push("/");
     }, 1000);
   };
 
@@ -126,24 +126,24 @@ export default function Dashboard() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-        
+
         {/* PANEL 1: Telephony Command Link */}
         <section className="col-span-1 border-2 border-terminal-green p-4 flex flex-col bg-black bg-opacity-70">
           <div className="flex items-center mb-6 border-b border-terminal-greenDim pb-2">
             <Phone className="w-5 h-5 mr-3 text-terminal-green" />
             <GlowingText className="text-lg tracking-widest">COMMAND_LINK</GlowingText>
           </div>
-          
+
           <div className="flex-1 space-y-6">
-            <TerminalInput 
-              label="TARGET_NUMBER" 
+            <TerminalInput
+              label="TARGET_NUMBER"
               placeholder="+1234567890"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
             />
-            
-            <TerminalInput 
-              label="AGENT_SYSTEM_PROMPT" 
+
+            <TerminalInput
+              label="AGENT_SYSTEM_PROMPT"
               multiline
               placeholder="Optional: Override default AI behavior. E.g., 'You are a customer support agent for Acme Corp...'"
               value={agentPrompt}
@@ -160,7 +160,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-terminal-greenDim">MODEL:</span>
-                  <span>gemini-2.0-flash</span>
+                  <span>gemini-2.5-flash-native-audio</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-terminal-greenDim">VOICE:</span>
@@ -180,9 +180,9 @@ export default function Dashboard() {
                 ABORT_CONNECTION
               </TerminalButton>
             ) : (
-              <TerminalButton 
-                variant="primary" 
-                className="w-full text-lg" 
+              <TerminalButton
+                variant="primary"
+                className="w-full text-lg"
                 isLoading={isCalling}
                 onClick={handleInitiateCall}
               >
@@ -194,27 +194,27 @@ export default function Dashboard() {
 
         {/* PANEL 2 & 3 CONTAINER */}
         <div className="col-span-1 lg:col-span-2 flex flex-col gap-6">
-          
+
           {/* PANEL 2: Active Connection Status */}
           <section className="h-32 border-2 border-terminal-amber p-4 flex flex-col justify-center items-center relative overflow-hidden bg-black bg-opacity-70">
             <GlowingText className="absolute top-2 left-2 text-xs text-terminal-amber opacity-70">
               STATUS_MONITOR
             </GlowingText>
             <div className="flex items-center space-x-4">
-                {status === "OFFLINE" || status === "DISCONNECTED" ? (
-                    <div className="text-terminal-amber opacity-50 tracking-[0.5em] text-2xl font-bold flex items-center gap-3">
-                        <WifiOff className="w-6 h-6" />
-                        [ {status} ]
-                    </div>
-                ) : (
-                    <div className="text-terminal-amber animate-pulse tracking-[0.5em] text-3xl font-bold flex items-center shadow-lg shadow-terminal-amber/20">
-                         {Array.from({length: 3}).map((_, i) => (
-                             <span key={i} className={`inline-block mr-2 text-terminal-green animate-bounce`} style={{ animationDelay: `${i * 0.15}s`}}>█</span>
-                         ))}
-                         <Wifi className="w-7 h-7 mr-3 text-terminal-green" />
-                         [ {status} ]
-                    </div>
-                )}
+              {status === "OFFLINE" || status === "DISCONNECTED" ? (
+                <div className="text-terminal-amber opacity-50 tracking-[0.5em] text-2xl font-bold flex items-center gap-3">
+                  <WifiOff className="w-6 h-6" />
+                  [ {status} ]
+                </div>
+              ) : (
+                <div className="text-terminal-amber animate-pulse tracking-[0.5em] text-3xl font-bold flex items-center shadow-lg shadow-terminal-amber/20">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <span key={i} className={`inline-block mr-2 text-terminal-green animate-bounce`} style={{ animationDelay: `${i * 0.15}s` }}>█</span>
+                  ))}
+                  <Wifi className="w-7 h-7 mr-3 text-terminal-green" />
+                  [ {status} ]
+                </div>
+              )}
             </div>
             {status === "CONNECTED" && (
               <div className="absolute bottom-2 right-4 text-xs text-terminal-green animate-pulse font-mono">
@@ -225,34 +225,33 @@ export default function Dashboard() {
 
           {/* PANEL 3: Communication Log (Terminal Output) */}
           <section className="flex-1 border-2 border-terminal-green p-4 flex flex-col bg-black bg-opacity-70 min-h-0">
-             <div className="flex items-center mb-4 border-b border-terminal-greenDim pb-2">
-                <TerminalIcon className="w-5 h-5 mr-3 text-terminal-green" />
-                <GlowingText className="text-lg tracking-widest">COMMUNICATION_LOG</GlowingText>
+            <div className="flex items-center mb-4 border-b border-terminal-greenDim pb-2">
+              <TerminalIcon className="w-5 h-5 mr-3 text-terminal-green" />
+              <GlowingText className="text-lg tracking-widest">COMMUNICATION_LOG</GlowingText>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto space-y-2 font-mono text-sm leading-relaxed pr-2">
-                {logs.map((log, idx) => (
-                    <div key={idx} className="flex">
-                        <span className="text-terminal-greenDim mr-3 shrink-0">[{log.timestamp}]</span>
-                        <span className={`mr-3 shrink-0 ${
-                          log.source === 'SYSTEM' ? 'text-terminal-amber' : 
-                          log.source === 'AGENT' ? 'text-blue-400' : 
-                          log.source === 'ERROR' ? 'text-red-400' :
+              {logs.map((log, idx) => (
+                <div key={idx} className="flex">
+                  <span className="text-terminal-greenDim mr-3 shrink-0">[{log.timestamp}]</span>
+                  <span className={`mr-3 shrink-0 ${log.source === 'SYSTEM' ? 'text-terminal-amber' :
+                      log.source === 'AGENT' ? 'text-blue-400' :
+                        log.source === 'ERROR' ? 'text-red-400' :
                           'text-terminal-green'
-                        }`}>
-                            {log.source}:
-                        </span>
-                        <span className={`break-words ${log.source === 'ERROR' ? 'text-red-400' : 'text-terminal-green'}`}>
-                          {log.message}
-                        </span>
-                    </div>
-                ))}
-                <div ref={logEndRef} className="h-4" />
-                <div className="text-terminal-green animate-pulse">█</div>
+                    }`}>
+                    {log.source}:
+                  </span>
+                  <span className={`break-words ${log.source === 'ERROR' ? 'text-red-400' : 'text-terminal-green'}`}>
+                    {log.message}
+                  </span>
+                </div>
+              ))}
+              <div ref={logEndRef} className="h-4" />
+              <div className="text-terminal-green animate-pulse">█</div>
             </div>
           </section>
         </div>
-        
+
       </div>
     </div>
   );

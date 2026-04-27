@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 
 /**
  * Initiates an outbound call via VideoSDK's SIP telephony API.
- * 
+ *
  * Flow:
  * 1. Dashboard sends phone number + optional prompt to this endpoint
- * 2. This endpoint calls VideoSDK's outbound SIP API
- * 3. VideoSDK routes the call through your Twilio SIP Trunk
- * 4. The call connects to your Python agent (main.py) via routing rules
+ * 2. This endpoint calls VideoSDK's /v2/sip/call API
+ * 3. VideoSDK creates a room, routes to the registered agent (MyTelephonyAgent)
+ * 4. VideoSDK bridges the phone call through the outbound gateway (Twilio)
  * 5. Gemini-powered AI agent handles the conversation
  */
 export async function POST(request: Request) {
@@ -17,20 +17,84 @@ export async function POST(request: Request) {
     console.log("Initiating outbound call to:", phoneNumber);
 
     if (!phoneNumber) {
-      return NextResponse.json({ error: "Phone number required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Phone number required" },
+        { status: 400 }
+      );
     }
 
     const videosdkToken = process.env.VIDEOSDK_AUTH_TOKEN;
-    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const gatewayId = process.env.VIDEOSDK_OUTBOUND_GATEWAY_ID;
     const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
 
-    // ─── METHOD: Twilio Direct ───
-    // Uses Twilio to call the number with a webhook that connects to VideoSDK
-    // This is the most reliable method for outbound calls because VideoSDK's direct 
-    // Outbound Gateway SIP API requires additional dashboard configuration (gatewayId).
-    return await makeTwilioCall(phoneNumber, agentPrompt, twilioAccountSid, twilioAuthToken, twilioPhoneNumber);
+    if (!videosdkToken) {
+      return NextResponse.json(
+        { error: "VIDEOSDK_AUTH_TOKEN is not configured." },
+        { status: 500 }
+      );
+    }
 
+    if (!gatewayId) {
+      return NextResponse.json(
+        {
+          error:
+            "VIDEOSDK_OUTBOUND_GATEWAY_ID is not configured. Create an outbound gateway in VideoSDK dashboard.",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Use VideoSDK's native outbound SIP call API
+    // This properly creates a room, routes to the agent, and bridges the call
+    console.log("Using VideoSDK outbound SIP call API...");
+
+    const sipCallPayload: Record<string, string> = {
+      sipCallTo: phoneNumber,
+      gatewayId: gatewayId,
+      displayName: "AI Agent",
+    };
+
+    // Include 'from' number if available
+    if (twilioPhoneNumber) {
+      sipCallPayload.sipCallFrom = twilioPhoneNumber;
+    }
+
+    const response = await fetch("https://api.videosdk.live/v2/sip/call", {
+      method: "POST",
+      headers: {
+        Authorization: videosdkToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(sipCallPayload),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("VideoSDK SIP call failed:", data);
+      return NextResponse.json(
+        {
+          error: "Failed to initiate call via VideoSDK",
+          details: data.message || JSON.stringify(data),
+        },
+        { status: response.status }
+      );
+    }
+
+    console.log("VideoSDK call initiated:", JSON.stringify(data));
+
+    return NextResponse.json({
+      success: true,
+      message: "Call initiated via VideoSDK SIP",
+      data: {
+        phoneNumber,
+        callSid: data.data?.id || data.data?.roomId || "unknown",
+        callStatus: data.data?.status || "initiated",
+        roomId: data.data?.roomId,
+        method: "videosdk-sip-outbound",
+        promptReceived: agentPrompt !== "",
+      },
+    });
   } catch (error) {
     console.error("Call initiation error:", error);
     return NextResponse.json(
@@ -41,66 +105,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Fallback: Use Twilio to make a direct call with TwiML that connects
- * the call to the VideoSDK room where the AI agent lives.
- */
-async function makeTwilioCall(
-  phoneNumber: string,
-  agentPrompt: string,
-  accountSid: string | undefined,
-  authToken: string | undefined,
-  twilioPhoneNumber: string | undefined
-) {
-  if (!accountSid || !authToken || !twilioPhoneNumber) {
-    return NextResponse.json(
-      { error: "Twilio credentials not configured. Set up SIP Trunking in VideoSDK dashboard for proper telephony routing." },
-      { status: 500 }
-    );
-  }
-
-  // Dynamic import for twilio
-  const twilio = (await import("twilio")).default;
-  const client = twilio(accountSid, authToken);
-
-  const videosdk_sip_uri = process.env.VIDEOSDK_SIP_URI;
-
-  if (!videosdk_sip_uri) {
-    return NextResponse.json(
-      { error: "VIDEOSDK_SIP_URI is not configured in dashboard/.env.local. Please set it to your Inbound Gateway URI to connect calls to the agent." },
-      { status: 500 }
-    );
-  }
-
-  console.log("Using Twilio direct call with inline TwiML connecting to:", videosdk_sip_uri);
-
-  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say voice="Polly.Amy">Please hold while I connect you to the AI assistant.</Say>
-    <Dial>
-        <Sip>${videosdk_sip_uri}</Sip>
-    </Dial>
-</Response>`;
-
-  const call = await client.calls.create({
-    twiml: twiml,
-    to: phoneNumber,
-    from: twilioPhoneNumber,
-  });
-
-  console.log("Twilio call initiated:", call.sid);
-
-  return NextResponse.json({
-    success: true,
-    message: "Call initiated via Twilio",
-    data: {
-      phoneNumber,
-      callSid: call.sid,
-      callStatus: call.status,
-      method: "twilio-direct-twiml",
-      promptReceived: agentPrompt !== "",
-    },
-  });
 }

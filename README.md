@@ -44,12 +44,6 @@ Start the agent worker. It will connect to VideoSDK and wait for calls:
 
 ```bash
 python3 main.py
-```
-*Note: Leave this terminal open and running. The agent uses the unique identifier `MyTelephonyAgent` to handle routing.*
 
-## 5. Making a Call
-Once the agent is running:
-1. **Inbound Calls**: Go to your VideoSDK Dashboard -> **Telephony / SIP**. You can link a phone number (provided by VideoSDK or Twilio) directly to the Agent ID: `MyTelephonyAgent`. When anyone dials that phone number, the agent will instantly pick up and answer!
-2. **Outbound Calls**: You can use the VideoSDK API to trigger an outbound call to any real phone number, assigning `MyTelephonyAgent` as the AI participant in the room.
 
 

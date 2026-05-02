@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import sys
-from typing import Optional
+
 
 from dotenv import load_dotenv
 from videosdk.agents import (
@@ -55,7 +55,9 @@ class MyVoiceAgent(Agent):
             "'Is there anything I can help you with?'\n"
         )
 
-        instructions = custom_instructions if custom_instructions.strip() else default_instructions
+        instructions = (
+            custom_instructions if custom_instructions.strip() else default_instructions
+        )
 
         super().__init__(
             instructions=instructions,
@@ -136,7 +138,9 @@ def validate_env():
     missing_vars = [var for var in required_vars if not os.getenv(var)]
 
     if missing_vars:
-        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+        logger.error(
+            f"Missing required environment variables: {', '.join(missing_vars)}"
+        )
         logger.error("Please check your .env file.")
         logger.error("")
         logger.error("Required variables:")

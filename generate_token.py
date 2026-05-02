@@ -11,7 +11,7 @@ payload = {
     "apikey": api_key,
     "permissions": ["allow_join"],
     "iat": int(time.time()),
-    "exp": int(time.time()) + 86400 * 365
+    "exp": int(time.time()) + 86400 * 365,
 }
 token = jwt.encode(payload, secret, algorithm="HS256")
 print(token)

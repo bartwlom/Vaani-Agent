@@ -121,7 +121,16 @@ async def start_session(context: JobContext):
 
 def make_context() -> JobContext:
     """Creates a new JobContext with default room options."""
-    return JobContext(room_options=RoomOptions())
+    return JobContext(
+        room_options=RoomOptions(
+            # Twilio trial accounts play a mandatory prompt (~15s) before
+            # connecting. The SIP participant briefly joins/leaves during
+            # this prompt. We increase timeouts so the agent stays alive
+            # long enough for the user to press the key and connect.
+            session_timeout_seconds=30,
+            no_participant_timeout_seconds=120,
+        )
+    )
 
 
 def validate_env():

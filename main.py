@@ -1,8 +1,6 @@
-import asyncio
 import logging
 import os
 import sys
-
 
 from dotenv import load_dotenv
 from videosdk.agents import (
@@ -10,7 +8,7 @@ from videosdk.agents import (
     AgentSession,
     JobContext,
     Options,
-    RealTimePipeline,
+    Pipeline,
     RoomOptions,
     WorkerJob,
 )
@@ -104,25 +102,21 @@ async def start_session(context: JobContext):
         ),
     )
 
-    pipeline = RealTimePipeline(model=model)
+    # Pipeline now uses 'llm=' parameter (unified Pipeline replaces RealTimePipeline)
+    pipeline = Pipeline(llm=model)
     session = AgentSession(agent=MyVoiceAgent(), pipeline=pipeline)
 
     try:
-        logger.info("Connecting to VideoSDK room...")
-        await context.connect()
-        logger.info("Starting agent session — ready for conversation.")
-        await session.start()
-
-        # Keep the session alive until the call ends or is interrupted
-        stop_event = asyncio.Event()
-        await stop_event.wait()
-
+        logger.info("Starting agent session with full lifecycle management...")
+        # run_until_shutdown=True handles: connect → wait for participant →
+        # start session → wait for call end → cleanup. This is the recommended
+        # pattern that properly handles SIP audio stream setup and teardown.
+        await session.start(
+            wait_for_participant=True,
+            run_until_shutdown=True,
+        )
     except Exception:
         logger.exception("An error occurred during the agent session")
-    finally:
-        logger.info("Shutting down session and context...")
-        await session.close()
-        await context.shutdown()
 
 
 def make_context() -> JobContext:

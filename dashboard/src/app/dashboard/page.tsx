@@ -235,9 +235,9 @@ export default function Dashboard() {
                 <div key={idx} className="flex">
                   <span className="text-terminal-greenDim mr-3 shrink-0">[{log.timestamp}]</span>
                   <span className={`mr-3 shrink-0 ${log.source === 'SYSTEM' ? 'text-terminal-amber' :
-                      log.source === 'AGENT' ? 'text-blue-400' :
-                        log.source === 'ERROR' ? 'text-red-400' :
-                          'text-terminal-green'
+                    log.source === 'AGENT' ? 'text-blue-400' :
+                      log.source === 'ERROR' ? 'text-red-400' :
+                        'text-terminal-green'
                     }`}>
                     {log.source}:
                   </span>
